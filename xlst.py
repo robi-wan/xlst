@@ -12,13 +12,10 @@ class MPS3(object):
     column = 0
     start_row = 9
     values = []
-    output_name = 'mps3.ini'
 
-    def __init__(self, book, path):
+    def __init__(self, book):
         self.book = book
-        self.path = path
         self._collect_data()
-        self._write()
 
     def _collect_data(self):
         col = self.column
@@ -29,8 +26,16 @@ class MPS3(object):
             if len(text) > 0:
                 self.values.append(text)
 
-        #print len(self.values)
-        #print ','.join(self.values)
+
+class MPS3Generator(object):
+
+    encoding = 'cp1252'
+    output_name = 'mps3.ini'
+
+    def __init__(self, values, path):
+        self.values = values
+        self.path = path
+        self._write()
 
     def _write(self):
         f = os.path.join(self.path, self.output_name)
@@ -38,7 +43,7 @@ class MPS3(object):
             for value in self.values:
                 #if value.startswith('['):
                     #mps_ini.write('\n')
-                mps_ini.write(value.encode('cp1252'))        
+                mps_ini.write(value.encode(self.encoding))
                 mps_ini.write('\n')
 
 class SetupExtractor(object):
@@ -49,7 +54,8 @@ class SetupExtractor(object):
         self._main_config()
 
     def _main_config(self):
-        MPS3(self.book, os.path.dirname(self.path))
+        mps3 = MPS3(self.book)
+        MPS3Generator(mps3.values, os.path.dirname(self.path))
 
 
 def main():
