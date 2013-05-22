@@ -200,6 +200,11 @@ class Translation(object):
         return min(rows, sheet.nrows)
 
 
+def description_ranges():
+    # xrange: end value is exclusive
+    return xrange(200), xrange(200, 600), xrange(600, 1300)
+
+
 class TranslationGenerator(Generator):
 
     suffix = '.lng'
@@ -228,6 +233,31 @@ class TranslationGenerator(Generator):
 
                     lang_file.write('\n')
 
+                self._write_notes(lang)
+
+    def _write_notes(self, lang):
+        for i in range(len(description_ranges())):
+            ran = description_ranges()[i]
+            f = os.path.join(self.path, "{}{}{}".format(lang, i+1, self.suffix))
+            with open(f, 'wb') as desc_file:
+                desc_file.write("[{}]".format(lang.upper()))
+                desc_file.write('\n')
+                for n in ran:
+                    desc_file.write("HILFEPARAM{}={}".format(n, self.__note(lang, n)))
+                    desc_file.write('\n')
+
+    def __delimiter(self):
+        return u'§§'.encode(self.encoding)
+
+    def __note(self, lang, number):
+        params = self.values.get((lang, 'params'))
+        for p in params:
+            if p.number == number and p.note:
+                note = p.note.text.encode(self.encoding)
+                note = self.__delimiter().join(note.splitlines())
+                return note
+        return None
+
 
 class SetupExtractor(object):
 
@@ -244,7 +274,7 @@ class SetupExtractor(object):
 
     def _translation(self):
         t = Translation(self.book)
-        TranslationGenerator([lang for lang,index in t.languages], t.values, self.output_path)
+        TranslationGenerator([lang for lang, index in t.languages], t.values, self.output_path)
 
 
 def main():
@@ -253,7 +283,7 @@ def main():
     parser.add_argument("workbook", help='path to workbook with setup data to extract')
     args = parser.parse_args()
     workbook = os.path.abspath(args.workbook)
-    extractor = SetupExtractor(workbook)
+    SetupExtractor(workbook)
 
 if __name__ == '__main__':
     main()
