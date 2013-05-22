@@ -27,6 +27,14 @@ class MPS3(object):
                 self.values.append(text)
 
 
+class HMI(MPS3):
+
+    sheet_index = 4
+
+    def __init__(self, book):
+        if book.sheet_by_index(self.sheet_index):
+            super(HMI, self).__init__(book)
+
 class Generator(object):
 
     encoding = 'cp1252'
@@ -49,6 +57,11 @@ class MPS3Generator(Generator):
                     #mps_ini.write('\n')
                 mps_ini.write(value.encode(self.encoding))
                 mps_ini.write('\n')
+
+
+class HMIGenerator(MPS3Generator):
+
+    output_name = 'HMISetup.ini'
 
 
 class OutputObject(object):
@@ -107,6 +120,12 @@ class ErrorMessages(OutputObject):
     ini_key = 'ERROR'
 
 
+class HMICategory(OutputObject):
+
+    comment = u'//Texte Registerkarte HMI'
+    ini_key = 'TABHMI'
+
+
 class Translation(object):
 
     languages = (('deutsch', 1), ('english', 2))
@@ -131,6 +150,7 @@ class Translation(object):
             self._menues(sheet, lang)
             self._system_messages(sheet, lang)
             self._error_messages(sheet, lang)
+            self._hmi_categories(sheet, lang)
 
     def _parameters(self, sheet, lang):
         for row in xrange(self.start_row, self.start_row + self.params):
@@ -196,6 +216,16 @@ class Translation(object):
             else:
                 break
 
+    def _hmi_categories(self, sheet, lang):
+        start_row = 1319
+        for row in xrange(start_row, start_row + 30):
+            name = sheet.cell(row, self.param_name_col).value
+            if len(name) > 0:
+                index = row - start_row
+                self.values.setdefault((lang, 'hmi_categories'), []).append(HMICategory(name=name, number=index))
+            else:
+                break
+
     def __rows(self, sheet, rows):
         return min(rows, sheet.nrows)
 
@@ -222,16 +252,16 @@ class TranslationGenerator(Generator):
                 lang_file.write("[{}]".format(lang))
                 lang_file.write('\n')
                 data = ('params', 'categories', 'header', 'menues',
-                        'system_messages', 'error_messages')
-                for d in data:
-                    values = self.values.get((lang, d))
-                    lang_file.write(values[0].comment.encode(self.encoding))
-                    lang_file.write('\n')
-                    for value in values:
-                        lang_file.write(str(value))
+                        'system_messages', 'error_messages', 'hmi_categories')
+                for values in [self.values.get((lang, d)) for d in data]:
+                    if values:  # values for 'hmi_categories' may be None
+                        lang_file.write(values[0].comment.encode(self.encoding))
                         lang_file.write('\n')
+                        for value in values:
+                            lang_file.write(str(value))
+                            lang_file.write('\n')
 
-                    lang_file.write('\n')
+                        lang_file.write('\n')
 
                 self._write_notes(lang)
 
@@ -266,11 +296,17 @@ class SetupExtractor(object):
         self.book = xlrd.open_workbook(self.path)
         self.output_path = os.path.dirname(self.path)
         self._main_config()
+        self._hmi_config()
         self._translation()
 
     def _main_config(self):
         mps3 = MPS3(self.book)
         MPS3Generator(mps3.values, self.output_path)
+
+    def _hmi_config(self):
+        hmi = HMI(self.book)
+        if hmi.values:
+            HMIGenerator(hmi.values, self.output_path)
 
     def _translation(self):
         t = Translation(self.book)
