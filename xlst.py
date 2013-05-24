@@ -138,7 +138,6 @@ class Translation(object):
         self.book = book
         self.values = {}
         self._collect_data()
-        #print self.values
 
     def _collect_data(self):
         for lang, sheet in self.languages:
