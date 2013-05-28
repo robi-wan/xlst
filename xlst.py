@@ -9,7 +9,7 @@ import xlrd
 
 class MPS3(object):
 
-    sheet_index = 3  # 'ini903'
+    sheet_index = 3  # 'ini903' | 'ini_dat'
     # rows and columns are zero based
     column = 0
     start_row = 9
@@ -154,15 +154,18 @@ class Translation(object):
         for row in xrange(self.start_row, self.start_row + self.params):
             name = sheet.cell(row, self.param_name_col).value
 
-            # extract param number as integer (Excel just knows floats)
-            cell = sheet.cell(row, self.param_number_col)
-            number = cell.value
-            if cell.ctype in (2, 3) and int(number) == number:
-                number = int(number)
+            # some setups does not have self.params e.g. infeeder: just get existing values
+            if name:
 
-            note = sheet.cell_note_map.get((row, self.param_name_col), None)
+                # extract param number as integer (Excel just knows floats)
+                cell = sheet.cell(row, self.param_number_col)
+                number = cell.value
+                if cell.ctype in (2, 3) and int(number) == number:
+                    number = int(number)
 
-            self.values.setdefault((lang, 'params'), []).append(Parameter(number=number, name=name, note=note))
+                note = sheet.cell_note_map.get((row, self.param_name_col), None)
+
+                self.values.setdefault((lang, 'params'), []).append(Parameter(number=number, name=name, note=note))
 
     def _categories(self, sheet, lang):
         start_row = 1349
@@ -265,11 +268,13 @@ class TranslationGenerator(Generator):
     def _write_notes(self, lang):
         for i in range(len(description_ranges())):
             ran = description_ranges()[i]
-            f = os.path.join(self.path, "{}{}{}".format(lang, i+1, self.suffix))
-            with codecs.open(f, mode='w', encoding=self.encoding) as desc_file:
-                desc_file.write(u"[{}]\n".format(lang.upper()))
-                for n in ran:
-                    desc_file.write(u"HILFEPARAM{}={}\n".format(n, self.__note(lang, n)))
+            # some setups does not have Translation.params e.g. infeeder: just write needed values
+            if max(ran) <= self.__max_param_number(lang):
+                f = os.path.join(self.path, "{}{}{}".format(lang, i+1, self.suffix))
+                with codecs.open(f, mode='w', encoding=self.encoding) as desc_file:
+                    desc_file.write(u"[{}]\n".format(lang.upper()))
+                    for n in ran:
+                        desc_file.write(u"HILFEPARAM{}={}\n".format(n, self.__note(lang, n)))
 
     def __delimiter(self):
         return u'§§'
@@ -282,6 +287,13 @@ class TranslationGenerator(Generator):
                 note = self.__delimiter().join(note.splitlines())
                 return note
         return None
+
+    def __max_param_number(self, lang):
+        max_number = 0
+        params = self.values.get((lang, 'params'))
+        for p in params:
+            max_number = max(max_number, p.number)
+        return max_number
 
 
 class SetupExtractor(object):
