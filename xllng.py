@@ -48,9 +48,9 @@ class LanguageConfigGenerator(object):
 
     def _write(self):
         f = os.path.join(self.path, self.output_name)
-        with open(f, 'wb') as mps_ini:
+        with codecs.open(f, mode='w', encoding=self.encoding) as outfile:
             for value in self.values:
-                mps_ini.write("{}\n".format(value.encode(self.encoding)))
+                outfile.write(u"{}\n".format(value))
 
 
 class Translation(object):
@@ -120,7 +120,7 @@ class Translation(object):
             key_prefix = self.key_sheet.cell(row, self.key_column).value
             if key_prefix:
                 self._current_key_prefix = key_prefix
-
+            # write new section
             outfile.write(u"{}\n".format(sec))
 
         text = sheet.cell(row, 0).value
