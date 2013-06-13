@@ -292,7 +292,7 @@ class TranslationGenerator(Generator):
         for p in params:
             if p.number == number and p.note:
                 note = p.note.text
-                note = self.__delimiter().join(note.splitlines())
+                note = note.replace(u'\n', self.__delimiter())
                 return note
         return None
 
