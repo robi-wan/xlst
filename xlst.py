@@ -262,12 +262,12 @@ class TranslationGenerator(Generator):
         for lang in self.languages:
             f = os.path.join(self.path, "{}{}".format(lang, self.suffix))
             with codecs.open(f, mode='w', encoding=self.encoding) as lang_file:
-                lang_file.write(u"[{}]\n".format(lang))
+                lang_file.write(u"[{}]".format(lang))
                 for values in [self.values.get((lang, d)) for d in self.data]:
                     if values:  # values for 'hmi_categories' may be None
-                        lang_file.write(u"{}\n".format(values[0].comment))
+                        lang_file.write(u"\n{}".format(values[0].comment))
                         for value in values:
-                            lang_file.write(u"{}{}={}\n".format(value.ini_key, value.number, value.name))
+                            lang_file.write(u"\n{}{}={}".format(value.ini_key, value.number, value.name))
 
                         lang_file.write(u'\n')
 
