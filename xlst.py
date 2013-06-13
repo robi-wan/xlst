@@ -16,7 +16,7 @@ class MPS3(object):
 
     def __init__(self, book):
         self.book = book
-        self.values = []
+        self.lines = []
         self._collect_data()
 
     def _collect_data(self):
@@ -24,8 +24,8 @@ class MPS3(object):
         sheet = self.book.sheet_by_index(self.sheet_index)
         for row in xrange(self.start_row, sheet.nrows):
             text = sheet.cell(row, col).value
-            if text:
-                self.values.append(text)
+            if text and not text.startswith(u';'):
+                self.lines.append(text)
 
 
 class HMI(MPS3):
@@ -46,16 +46,24 @@ class MPS3Generator(Generator):
 
     output_name = 'mps3.ini'
 
-    def __init__(self, values, path):
-        self.values = values
+    def __init__(self, lines, path):
+        self.lines = lines
         self.path = path
+        self.first_section = True
         self._write()
 
     def _write(self):
         f = os.path.join(self.path, self.output_name)
         with codecs.open(f, mode='w', encoding=self.encoding) as mps_ini:
-            for value in self.values:
-                mps_ini.write(u"{}\n".format(value))
+            for line in self.lines:
+                self._section_gap(mps_ini, line)
+                mps_ini.write(u"{}\n".format(line))
+
+    def _section_gap(self, file, line):
+        if line.startswith(u'['):
+            if not self.first_section:
+                file.write(u'\n')
+            self.first_section = False
 
 
 class HMIGenerator(MPS3Generator):
@@ -263,7 +271,7 @@ class TranslationGenerator(Generator):
 
                         lang_file.write(u'\n')
 
-                self._write_notes(lang)
+            self._write_notes(lang)
 
     def _write_notes(self, lang):
         for i in range(len(description_ranges())):
@@ -308,12 +316,12 @@ class SetupExtractor(object):
 
     def _main_config(self):
         mps3 = MPS3(self.book)
-        MPS3Generator(mps3.values, self.output_path)
+        MPS3Generator(mps3.lines, self.output_path)
 
     def _hmi_config(self):
         hmi = HMI(self.book)
-        if hmi.values:
-            HMIGenerator(hmi.values, self.output_path)
+        if hmi.lines:
+            HMIGenerator(hmi.lines, self.output_path)
 
     def _translation(self):
         t = Translation(self.book)
